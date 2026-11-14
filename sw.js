@@ -1,7 +1,4 @@
-// Eski sürümlerdeki önbellekleri kaldır ve servis çalışanı kaydını sonlandır.
-self.addEventListener("install", event => {
-  self.skipWaiting();
-});
+self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
