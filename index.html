@@ -65,7 +65,7 @@ button:disabled{opacity:.55;cursor:wait}.note{display:block;color:var(--muted);f
 #preview .block{margin:8px 0!important;padding:9px 11px!important;background:#f2f6f9!important;border:1px solid #e1e8ee!important;border-radius:8px!important;white-space:pre-wrap!important}
 #preview .section-title{margin:10px 0 6px!important}
 #preview .pictures figure{margin:0!important;padding:0!important;break-inside:avoid!important;page-break-inside:avoid!important}
-#preview .pictures img{display:block!important;width:100%!important;height:145px!important;max-height:145px!important;object-fit:contain!important;margin:0 auto!important;border:1px solid #dce4eb!important;border-radius:6px!important;background:#f7f8fa!important}
+#preview .pictures img{display:block!important;width:100%!important;height:150px!important;max-height:150px!important;object-fit:contain!important;margin:0 auto!important;border:1px solid #dce4eb!important;border-radius:6px!important;background:#f7f8fa!important}
 #preview .pictures figcaption{font-size:9px!important;line-height:1.2!important;color:#657586!important;text-align:center!important;margin:3px 0 0!important}
 
 
@@ -222,25 +222,28 @@ $('makePdf').onclick=async()=>{
    });
   }
 
-  // First photo: reserved, fixed-size frame at the bottom of the report cover.
+  // İlk fotoğrafı rapor bilgilerinin hemen altındaki kontrollü alana yerleştir.
   if(photos.length){
    const coverPage=pdfDoc.getPages()[0];
-   await placePhoto(coverPage,0,{x:95,y:35,w:405,h:175});
+   await placePhoto(coverPage,0,{x:105,y:205,w:385,h:170});
   }
 
-  // Remaining photos: two identical fixed frames per page.
-  // If only one photo remains, it keeps the same frame size; it is never enlarged.
-  const photoFrameW=430,photoFrameH=260;
+  // Kalan fotoğraflar: her sayfada en fazla 3 eşit çerçeve.
+  // Tek kalan fotoğraf da aynı çerçevede kalır; büyütülmez.
+  const perPhotoPage=3;
+  const photoFrameW=440,photoFrameH=190;
   const frameX=(pageW-photoFrameW)/2;
-  const topFrameY=465,bottomFrameY=105;
-  for(let i=1;i<photos.length;i+=2){
+  const frameYs=[570,335,100];
+  for(let i=1;i<photos.length;i+=perPhotoPage){
    const page=pdfDoc.addPage([pageW,pageH]);
    page.drawText('ZENGIN IZOLASYON - IMALAT FOTOGRAFLARI',{
     x:margin,y:pageH-34,size:11,font,color:rgb(0.09,0.21,0.33)
    });
-   await placePhoto(page,i,{x:frameX,y:topFrameY,w:photoFrameW,h:photoFrameH});
-   if(i+1<photos.length){
-    await placePhoto(page,i+1,{x:frameX,y:bottomFrameY,w:photoFrameW,h:photoFrameH});
+   const count=Math.min(perPhotoPage,photos.length-i);
+   for(let j=0;j<count;j++){
+    await placePhoto(page,i+j,{
+     x:frameX,y:frameYs[j],w:photoFrameW,h:photoFrameH
+    });
    }
   }
   pdfBlob=new Blob([await pdfDoc.save({useObjectStreams:true,addDefaultPage:false})],{type:'application/pdf'});
