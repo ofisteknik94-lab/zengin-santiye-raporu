@@ -31,10 +31,12 @@ button:disabled{opacity:.55;cursor:wait}.note{display:block;color:var(--muted);f
 .pmeta b{display:block;font-size:10px;color:#657586;margin-bottom:4px;text-transform:uppercase}
 .pmeta span{font-size:13px;font-weight:700}
 .block{margin:12px 0;padding:11px;background:#f4f7fa;border-radius:8px;white-space:pre-wrap;font-size:13px;line-height:1.5}
-.pictures{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
-.pictures img{width:100%;height:190px;object-fit:contain;border:1px solid #dce4eb;border-radius:6px;background:#f7f8fa}
+.pictures{display:block;margin-top:12px}
+.pictures figure{display:block;margin:0 0 14px;page-break-inside:avoid;break-inside:avoid}
+.pictures img{display:block;width:100%;height:auto;max-height:270px;object-fit:contain;object-position:center;border:1px solid #dce4eb;border-radius:6px;background:#f7f8fa;margin:0 auto}
+.pictures figcaption{font-size:10px;color:#657586;margin:4px 0 0;text-align:center}
 .share-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
-@media(max-width:520px){.row{grid-template-columns:1fr}.panel{padding:14px}.pmeta{grid-template-columns:1fr}.pictures img{height:145px}}
+@media(max-width:520px){.row{grid-template-columns:1fr}.panel{padding:14px}.pmeta{grid-template-columns:1fr}.pictures img{max-height:230px}}
 @media print{.no-print,header,main>section:first-child{display:none!important}body{background:white}#preview{display:block!important;border:0}}
 </style>
 </head>
@@ -70,27 +72,29 @@ button:disabled{opacity:.55;cursor:wait}.note{display:block;color:var(--muted);f
 <script>
 const $=id=>document.getElementById(id);
 const dateNow=new Date();$('date').value=new Date(dateNow.getTime()-dateNow.getTimezoneOffset()*60000).toISOString().slice(0,10);
-let photoData=[],pdfBlob=null,pdfName='zengin-izolasyon-gunluk-rapor.pdf';
+let photoSlots=[],photoCounter=0,pdfBlob=null,pdfName='zengin-izolasyon-gunluk-rapor.pdf';
 function addPhoto(){
- const n=photoData.length,wrap=document.createElement('div');wrap.className='photo';
- const input=document.createElement('input');input.type='file';input.accept='image/*';input.id='img'+n;
- const label=document.createElement('label');label.htmlFor=input.id;label.innerHTML='<strong style="font-size:25px">＋</strong><span>Fotoğraf '+(n+1)+'</span>';
+ const slot={id:++photoCounter,data:null};
+ photoSlots.push(slot);
+ const wrap=document.createElement('div');wrap.className='photo';
+ const input=document.createElement('input');input.type='file';input.accept='image/*';input.id='img'+slot.id;
+ const label=document.createElement('label');label.htmlFor=input.id;label.innerHTML='<strong style="font-size:25px">＋</strong><span>Fotoğraf '+slot.id+'</span>';
  input.addEventListener('change',e=>{
   const file=e.target.files&&e.target.files[0];if(!file)return;
   if(!file.type.startsWith('image/')){alert('Lütfen fotoğraf dosyası seçin.');return}
   const reader=new FileReader();
-  reader.onload=()=>{photoData[n]=reader.result;label.innerHTML='';const im=document.createElement('img');im.src=reader.result;label.appendChild(im);};
+  reader.onload=()=>{slot.data=reader.result;label.innerHTML='';const im=document.createElement('img');im.src=reader.result;label.appendChild(im);};
   reader.onerror=()=>alert('Fotoğraf okunamadı. Başka bir fotoğraf deneyin.');
   reader.readAsDataURL(file);
  });
- const del=document.createElement('button');del.type='button';del.className='remove';del.textContent='Kaldır';del.onclick=()=>{photoData[n]=null;wrap.remove()};
+ const del=document.createElement('button');del.type='button';del.className='remove';del.textContent='Kaldır';del.onclick=()=>{photoSlots=photoSlots.filter(x=>x.id!==slot.id);wrap.remove()};
  wrap.append(input,label,del);$('photos').appendChild(wrap);
 }
 $('addPhoto').onclick=addPhoto;addPhoto();addPhoto();
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function showStatus(msg,good=false){$('status').style.display='block';$('status').style.background=good?'#eaf6ee':'#fff2e8';$('status').style.color=good?'#245b35':'#81451b';$('status').textContent=msg}
 function buildPreview(data){
- const photos=data.photos.map((p,i)=>`<img src="${p}" alt="İmalat fotoğrafı ${i+1}">`).join('');
+ const photos=data.photos.map((p,i)=>`<figure><img src="${p}" alt="İmalat fotoğrafı ${i+1}"><figcaption>İmalat fotoğrafı ${i+1}</figcaption></figure>`).join('');
  $('preview').innerHTML=`<h1>ZENGİN İZOLASYON</h1><div class="sub">GÜNLÜK ŞANTİYE İMALAT VE SAHA RAPORU</div>
  <h2 style="font-size:18px;color:#173653;margin:0">${esc(data.site)}</h2>
  <div class="pmeta"><div><b>Rapor tarihi</b><span>${esc(data.date)}</span></div><div><b>Şantiye şefi</b><span>${esc(data.supervisor||'Belirtilmedi')}</span></div></div>
@@ -101,7 +105,7 @@ function buildPreview(data){
  $('preview').style.display='block';$('shareActions').style.display='grid';
 }
 $('makePdf').onclick=async()=>{
- const site=$('site').value.trim(),date=$('date').value,workers=$('workers').value.trim(),materials=$('materials').value.trim(),photos=photoData.filter(Boolean);
+ const site=$('site').value.trim(),date=$('date').value,workers=$('workers').value.trim(),materials=$('materials').value.trim(),photos=photoSlots.map(x=>x.data).filter(Boolean);
  if(!site||!date||!workers||!materials){showStatus('Lütfen şantiye, tarih, personel ve malzeme alanlarını doldurun.');return}
  if(photos.length<2){showStatus('PDF oluşturmak için en az 2 fotoğraf ekleyin.');return}
  if(typeof html2pdf==='undefined'){showStatus('PDF kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');return}
@@ -111,7 +115,7 @@ $('makePdf').onclick=async()=>{
   buildPreview(data);
   await Promise.all([...$('preview').querySelectorAll('img')].map(im=>im.decode().catch(()=>{})));
   pdfName='zengin-izolasyon-'+site.toLocaleLowerCase('tr').replace(/[^a-z0-9]+/g,'-')+'-'+date+'.pdf';
-  const opt={margin:[10,10,10,10],filename:pdfName,image:{type:'jpeg',quality:.88},html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}};
+  const opt={margin:[10,10,10,10],filename:pdfName,image:{type:'jpeg',quality:.88},html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['figure','.pictures img']}};
   pdfBlob=await html2pdf().set(opt).from($('preview')).outputPdf('blob');
   showStatus('PDF hazır. Şimdi WhatsApp / Paylaş düğmesine dokunarak gönderebilirsiniz.',true);
   $('shareActions').scrollIntoView({behavior:'smooth',block:'center'});
