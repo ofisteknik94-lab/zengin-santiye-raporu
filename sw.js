@@ -1,4 +1,4 @@
-const CACHE = "zengin-rapor-v2";
+const CACHE = "zengin-rapor-v3";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)));
