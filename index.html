@@ -68,6 +68,15 @@ button:disabled{opacity:.55;cursor:wait}.note{display:block;color:var(--muted);f
 #preview .pictures img{display:block!important;width:100%!important;height:145px!important;max-height:145px!important;object-fit:contain!important;margin:0 auto!important;border:1px solid #dce4eb!important;border-radius:6px!important;background:#f7f8fa!important}
 #preview .pictures figcaption{font-size:9px!important;line-height:1.2!important;color:#657586!important;text-align:center!important;margin:3px 0 0!important}
 
+
+/* V9: consistent report hierarchy */
+#preview .report-kicker{font-size:11px!important;font-weight:700!important;letter-spacing:.45px!important;color:#173653!important}
+#preview .report-site{font-size:17px!important;font-weight:700!important;color:#173653!important}
+#preview .pmeta b,#preview .block b,#preview .section-title{font-size:11px!important;font-weight:700!important;letter-spacing:.2px!important;color:#173653!important}
+#preview .pmeta span,#preview .block{font-size:12px!important;font-weight:400!important;line-height:1.4!important;color:#263746!important}
+#preview .pmeta b{display:block!important;margin:0 0 5px!important}
+#preview .block b{display:block!important;margin:0 0 5px!important}
+
 </style>
 </head>
 <body>
@@ -184,10 +193,9 @@ $('makePdf').onclick=async()=>{
   const data={site,date,supervisor:$('supervisor').value.trim(),workers,materials,photos};
   buildPreview(data);
   const pictures=$('preview').querySelector('.pictures');
-  const figures=Array.from(pictures.querySelectorAll('figure'));
-  figures.forEach((fig,i)=>{fig.style.display=i===0?'block':'none';});
-  const firstImg=figures[0]?.querySelector('img');
-  if(firstImg){firstImg.style.height='145px';firstImg.style.maxHeight='145px';firstImg.style.width='100%';firstImg.style.maxWidth='100%';firstImg.style.objectFit='contain';}
+  const photoHeading=Array.from($('preview').querySelectorAll('.section-title')).find(el=>el.textContent.includes('İMALAT FOTOĞRAFLARI'));
+  pictures.style.display='none';
+  if(photoHeading)photoHeading.style.display='none';
   const coverBlob=await html2pdf().set({
    margin:[9,9,9,9],
    image:{type:'jpeg',quality:.78},
@@ -195,33 +203,44 @@ $('makePdf').onclick=async()=>{
    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
    pagebreak:{mode:['css','legacy']}
   }).from($('preview')).outputPdf('blob');
-  figures.forEach(fig=>fig.style.display='');
-  if(firstImg){firstImg.style.height='145px';firstImg.style.maxHeight='145px';firstImg.style.width='100%';firstImg.style.maxWidth='100%';firstImg.style.objectFit='contain';}
+  pictures.style.display='';
+  if(photoHeading)photoHeading.style.display='';
 
   const {PDFDocument,StandardFonts,rgb}=PDFLib;
   const pdfDoc=await PDFDocument.load(await coverBlob.arrayBuffer());
   const font=await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const pageW=595.28,pageH=841.89,margin=42,gap=38;
-  const perPage=2;
-  for(let i=1;i<photos.length;i+=perPage){
+  const pageW=595.28,pageH=841.89,margin=42;
+  async function placePhoto(page,photoIndex,frame){
+   const bytes=await toJpegBytes(photos[photoIndex],1400,.70);
+   const image=await pdfDoc.embedJpg(bytes);
+   const scale=Math.min(frame.w/image.width,frame.h/image.height,1);
+   const w=image.width*scale,h=image.height*scale;
+   const x=frame.x+(frame.w-w)/2,y=frame.y+(frame.h-h)/2;
+   page.drawImage(image,{x,y,width:w,height:h});
+   page.drawText('Imalat fotografi '+(photoIndex+1)+' / '+photos.length,{
+    x:frame.x,y:frame.y-14,size:9,font,color:rgb(0.40,0.47,0.54)
+   });
+  }
+
+  // First photo: reserved, fixed-size frame at the bottom of the report cover.
+  if(photos.length){
+   const coverPage=pdfDoc.getPages()[0];
+   await placePhoto(coverPage,0,{x:95,y:35,w:405,h:175});
+  }
+
+  // Remaining photos: two identical fixed frames per page.
+  // If only one photo remains, it keeps the same frame size; it is never enlarged.
+  const photoFrameW=430,photoFrameH=260;
+  const frameX=(pageW-photoFrameW)/2;
+  const topFrameY=465,bottomFrameY=105;
+  for(let i=1;i<photos.length;i+=2){
    const page=pdfDoc.addPage([pageW,pageH]);
    page.drawText('ZENGIN IZOLASYON - IMALAT FOTOGRAFLARI',{
     x:margin,y:pageH-34,size:11,font,color:rgb(0.09,0.21,0.33)
    });
-   const count=Math.min(perPage,photos.length-i);
-   const frameW=pageW-margin*2,frameH=292;
-   const frameYs=count===1?[pageH-390]:[pageH-390, pageH-748];
-   for(let j=0;j<count;j++){
-    const idx=i+j;
-    const bytes=await toJpegBytes(photos[idx],1400,.70);
-    const image=await pdfDoc.embedJpg(bytes);
-    const scale=Math.min(frameW/image.width,frameH/image.height);
-    const w=image.width*scale,h=image.height*scale;
-    const x=(pageW-w)/2,y=frameYs[j]+(frameH-h)/2;
-    page.drawImage(image,{x,y,width:w,height:h});
-    page.drawText('Imalat fotografi '+(idx+1)+' / '+photos.length,{
-     x:margin,y:frameYs[j]-18,size:9,font,color:rgb(0.40,0.47,0.54)
-    });
+   await placePhoto(page,i,{x:frameX,y:topFrameY,w:photoFrameW,h:photoFrameH});
+   if(i+1<photos.length){
+    await placePhoto(page,i+1,{x:frameX,y:bottomFrameY,w:photoFrameW,h:photoFrameH});
    }
   }
   pdfBlob=new Blob([await pdfDoc.save({useObjectStreams:true,addDefaultPage:false})],{type:'application/pdf'});

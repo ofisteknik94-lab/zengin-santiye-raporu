@@ -1,4 +1,3 @@
-// V8: Remove any legacy service worker and old app caches.
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
