@@ -117,8 +117,6 @@ button:disabled{opacity:.55;cursor:wait}.note{display:block;color:var(--muted);f
  <button class="secondary" id="downloadPdf" style="margin:0">PDF indir</button>
 </div>
 </main>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -198,66 +196,100 @@ $('makePdf').onclick=async()=>{
  const site=$('site').value.trim(),date=$('date').value,workers=$('workers').value.trim(),materials=$('materials').value.trim(),photos=photoSlots.map(x=>x.data).filter(Boolean);
  if(!site||!date||!workers||!materials){showStatus('Lütfen şantiye, tarih, personel ve malzeme alanlarını doldurun.');return}
  if(photos.length<2){showStatus('PDF oluşturmak için en az 2 fotoğraf ekleyin.');return}
- if(typeof html2pdf==='undefined'||!window.PDFLib){showStatus('PDF araçları yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');return}
+ if(!window.PDFLib){showStatus('PDF oluşturma aracı yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');return}
  const btn=$('makePdf');btn.disabled=true;btn.textContent='PDF HAZIRLANIYOR...';
- const preview=$('preview');
- let oldPicturesDisplay='',oldHeadingDisplay='';
  try{
-  const data={site,date,supervisor:$('supervisor').value.trim(),workers,materials,photos};
-  buildPreview(data);
-
-  // Kapak görüntüsünü fotoğraflar olmadan tek parça yakala.
-  const pictures=preview.querySelector('.pictures');
-  const photoHeading=Array.from(preview.querySelectorAll('.section-title')).find(el=>el.textContent.includes('İMALAT FOTOĞRAFLARI'));
-  oldPicturesDisplay=pictures.style.display;
-  oldHeadingDisplay=photoHeading?photoHeading.style.display:'';
-  pictures.style.display='none';
-  if(photoHeading)photoHeading.style.display='none';
-
-  const canvas=await html2canvas(preview,{
-   scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,
-   scrollX:0,scrollY:0,windowWidth:preview.scrollWidth
-  });
-  pictures.style.display=oldPicturesDisplay;
-  if(photoHeading)photoHeading.style.display=oldHeadingDisplay;
-
+  buildPreview({site,date,supervisor:$('supervisor').value.trim(),workers,materials,photos});
   const {PDFDocument,StandardFonts,rgb}=PDFLib;
   const pdfDoc=await PDFDocument.create();
   const font=await pdfDoc.embedFont(StandardFonts.Helvetica);
   const pageW=595.28,pageH=841.89,margin=42;
 
-  // Tek kapak sayfası: rapor bilgileri üstte, ilk fotoğraf altta sabit çerçevede.
-  const cover=pdfDoc.addPage([pageW,pageH]);
-  const coverJpg=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Rapor kapağı oluşturulamadı.')),'image/jpeg',.88));
-  const coverBytes=new Uint8Array(await coverJpg.arrayBuffer());
+  // Kapak: html2canvas kullanılmadan tarayıcının yerel Canvas API'si ile çizilir.
+  const coverCanvas=document.createElement('canvas');
+  coverCanvas.width=1240;coverCanvas.height=1754;
+  const ctx=coverCanvas.getContext('2d');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1240,1754);
+  ctx.fillStyle='#173653';ctx.fillRect(0,0,1240,28);
+
+  const previewLogo=$('preview').querySelector('.report-logo');
+  if(previewLogo&&previewLogo.complete&&previewLogo.naturalWidth){
+   const maxW=620,maxH=180,scale=Math.min(maxW/previewLogo.naturalWidth,maxH/previewLogo.naturalHeight);
+   const w=previewLogo.naturalWidth*scale,h=previewLogo.naturalHeight*scale;
+   ctx.drawImage(previewLogo,90,85,w,h);
+  }else{
+   ctx.fillStyle='#173653';ctx.font='bold 44px Arial';ctx.fillText('ZENGİN İZOLASYON',90,165);
+  }
+
+  ctx.fillStyle='#173653';ctx.font='bold 46px Arial';ctx.fillText('GÜNLÜK ŞANTİYE RAPORU',90,340);
+  ctx.fillStyle='#657586';ctx.font='26px Arial';ctx.fillText('Günlük imalat ve saha çalışma raporu',90,390);
+  ctx.fillStyle='#e2e8ee';ctx.fillRect(90,430,1060,3);
+
+  function card(x,y,w,h,label,value){
+   ctx.fillStyle='#f2f6f9';ctx.fillRect(x,y,w,h);
+   ctx.strokeStyle='#dce4eb';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);
+   ctx.fillStyle='#173653';ctx.font='bold 22px Arial';ctx.fillText(label,x+24,y+40);
+   ctx.fillStyle='#263746';ctx.font='28px Arial';
+   let text=String(value||'Belirtilmedi');
+   const maxWidth=w-48;let lines=[],line='';
+   for(const word of text.split(/\s+/)){const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=word}else line=test}
+   if(line)lines.push(line);
+   lines.slice(0,3).forEach((t,i)=>ctx.fillText(t,x+24,y+88+i*36));
+  }
+  card(90,480,510,145,'ŞANTİYE / PROJE ADI',site);
+  card(640,480,510,145,'RAPOR TARİHİ',formatTurkishDate(date));
+  card(90,650,1060,145,'ŞANTİYE ŞEFİ',$('supervisor').value.trim()||'Belirtilmedi');
+
+  function section(y,title,text){
+   ctx.fillStyle='#173653';ctx.font='bold 27px Arial';ctx.fillText(title,90,y);
+   ctx.fillStyle='#f2f6f9';ctx.fillRect(90,y+24,1060,230);
+   ctx.strokeStyle='#dce4eb';ctx.strokeRect(90,y+24,1060,230);
+   ctx.fillStyle='#263746';ctx.font='25px Arial';
+   const maxWidth=1000,lineHeight=38;let yy=y+76;
+   for(const paragraph of String(text).split(/\n/)){
+    let line='';
+    for(const word of paragraph.split(/\s+/)){
+     const test=line?line+' '+word:word;
+     if(ctx.measureText(test).width>maxWidth&&line){ctx.fillText(line,118,yy);yy+=lineHeight;line=word}
+     else line=test;
+     if(yy>y+230)break;
+    }
+    if(line&&yy<=y+230){ctx.fillText(line,118,yy);yy+=lineHeight}
+    if(yy>y+230)break;
+   }
+  }
+  section(875,'PERSONEL / ÇALIŞMA BİLGİSİ',workers);
+  section(1190,'KULLANILAN MALZEMELER',materials);
+  ctx.fillStyle='#657586';ctx.font='20px Arial';ctx.fillText('Zengin İzolasyon | Günlük Şantiye İmalat ve Saha Raporu',90,1665);
+
+  const coverBlob=await new Promise((resolve,reject)=>coverCanvas.toBlob(b=>b?resolve(b):reject(new Error('Kapak görseli oluşturulamadı.')),'image/jpeg',.94));
+  const coverBytes=new Uint8Array(await coverBlob.arrayBuffer());
   const coverImage=await pdfDoc.embedJpg(coverBytes);
-  const maxCoverW=pageW-margin*2,maxCoverH=465;
-  const coverScale=Math.min(maxCoverW/coverImage.width,maxCoverH/coverImage.height);
+  const cover=pdfDoc.addPage([pageW,pageH]);
+  const coverScale=Math.min((pageW-30)/coverImage.width,(pageH-30)/coverImage.height);
   const coverW=coverImage.width*coverScale,coverH=coverImage.height*coverScale;
-  cover.drawImage(coverImage,{x:(pageW-coverW)/2,y:pageH-margin-coverH,width:coverW,height:coverH});
+  cover.drawImage(coverImage,{x:(pageW-coverW)/2,y:(pageH-coverH)/2,width:coverW,height:coverH});
 
   async function placePhoto(page,index,frame){
-   const bytes=await toJpegBytes(photos[index],1500,.72);
+   const bytes=await toJpegBytes(photos[index],1600,.82);
    const image=await pdfDoc.embedJpg(bytes);
    const scale=Math.min(frame.w/image.width,frame.h/image.height);
    const w=image.width*scale,h=image.height*scale;
    const x=frame.x+(frame.w-w)/2,y=frame.y+(frame.h-h)/2;
+   page.drawRectangle({x:frame.x,y:frame.y,width:frame.w,height:frame.h,borderColor:rgb(.86,.89,.92),borderWidth:1});
    page.drawImage(image,{x,y,width:w,height:h});
    page.drawText('Imalat fotografi '+(index+1)+' / '+photos.length,{
-    x:frame.x,y:frame.y-16,size:9,font,color:rgb(0.40,0.47,0.54)
+    x:frame.x,y:frame.y-17,size:9,font,color:rgb(.40,.47,.54)
    });
   }
 
-  // Kapak fotoğrafı, bilgi bloğunun altındaki sabit alana yerleşir.
-  await placePhoto(cover,0,{x:105,y:42,w:385,h:205});
-
-  // Fotoğraf sayfaları: her sayfada iki eşit çerçeve. Son sayfadaki tek fotoğraf büyütülmez.
-  const frame={x:75,w:445,h:275};
+  // İlk sayfadan sonra tüm fotoğraflar ikişerli gelir; tek kalan da aynı ölçüde tutulur.
+  const frame={x:65,w:465,h:285};
   const frameY=[470,105];
-  for(let i=1;i<photos.length;i+=2){
+  for(let i=0;i<photos.length;i+=2){
    const page=pdfDoc.addPage([pageW,pageH]);
-   page.drawText('ZENGIN IZOLASYON - IMALAT FOTOGRAFLARI',{
-    x:margin,y:pageH-34,size:11,font,color:rgb(0.09,0.21,0.33)
+   page.drawText('ZENGIN IZOLASYON - SAHA GORSELLERI',{
+    x:margin,y:pageH-34,size:11,font,color:rgb(.09,.21,.33)
    });
    await placePhoto(page,i,{...frame,y:frameY[0]});
    if(i+1<photos.length)await placePhoto(page,i+1,{...frame,y:frameY[1]});
@@ -266,14 +298,12 @@ $('makePdf').onclick=async()=>{
   pdfBlob=new Blob([await pdfDoc.save({useObjectStreams:true})],{type:'application/pdf'});
   pdfName='zengin-izolasyon-'+site.toLocaleLowerCase('tr').replace(/[^a-z0-9]+/g,'-')+'-'+date+'.pdf';
   const sizeMB=(pdfBlob.size/1024/1024).toFixed(2);
-  showStatus('PDF hazır. Kapak ve fotoğraf sayfaları sabit şablonla oluşturuldu. Dosya boyutu: '+sizeMB+' MB. WhatsApp / Paylaş düğmesine dokunabilirsiniz.',true);
+  showStatus('PDF hazır. İlk sayfa rapor bilgileri, sonraki sayfalar saha görselleridir. Dosya boyutu: '+sizeMB+' MB.',true);
   $('shareActions').scrollIntoView({behavior:'smooth',block:'center'});
  }catch(err){
   console.error(err);
   showStatus('PDF oluşturulamadı: '+(err.message||'Bilinmeyen hata'));
  }finally{
-  const pic=preview.querySelector('.pictures');if(pic)pic.style.display='';
-  const head=Array.from(preview.querySelectorAll('.section-title')).find(el=>el.textContent.includes('İMALAT FOTOĞRAFLARI'));if(head)head.style.display='';
   btn.disabled=false;btn.textContent='PDF OLUŞTUR VE PAYLAŞ';
  }
 };
