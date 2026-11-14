@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#173653">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Zengin İzolasyon | Günlük Şantiye Raporu</title>
+<style>
+:root{--navy:#173653;--blue:#24577f;--bg:#f2f5f8;--line:#dce4eb;--muted:#657586}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:16px system-ui,-apple-system,Segoe UI,sans-serif;color:#172534}
+header{background:var(--navy);color:#fff;padding:22px 18px 19px}header .brand{font-size:20px;font-weight:850;letter-spacing:.4px}header p{margin:5px 0 0;color:#d6e2ec;font-size:13px}
+main{max-width:720px;margin:16px auto;padding:0 12px 34px}.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:13px;box-shadow:0 2px 9px #1736530a}
+h2{font-size:17px;margin:0 0 10px}.hint{font-size:12px;color:var(--muted);margin:0 0 12px;line-height:1.45}
+label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px}
+input,textarea{width:100%;font:inherit;border:1px solid #cbd6df;border-radius:10px;padding:12px;background:#fff;color:#172534}
+textarea{min-height:86px;resize:vertical}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.photo{position:relative;min-width:0}.photo input{display:none}.photo label{height:118px;border:1.5px dashed #9eb0bf;border-radius:12px;background:#f7fafc;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;color:#49647b;text-align:center;cursor:pointer;margin:0;font-size:12px;overflow:hidden}.photo img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}.remove{position:absolute;right:5px;top:5px;background:#fff;color:#a3332a;padding:5px 8px;font-size:11px;z-index:2}
+button{border:0;border-radius:11px;padding:14px 15px;font:750 15px system-ui;cursor:pointer}
+.primary{width:100%;background:var(--navy);color:white}.secondary{width:100%;background:#eaf0f5;color:var(--navy);margin-top:9px}
+button:disabled{opacity:.55;cursor:wait}.note{display:block;color:var(--muted);font-size:11px;line-height:1.5;margin-top:10px}
+#status{display:none;padding:11px 12px;border-radius:10px;background:#eaf6ee;color:#245b35;font-size:13px;line-height:1.45;margin-bottom:12px}
+#preview{display:none;background:#fff;padding:18px;border:1px solid var(--line);border-radius:12px}
+#preview h1{font-size:20px;color:#173653;margin:0 0 4px}#preview .sub{font-size:12px;color:#657586;margin-bottom:16px}
+.pmeta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.pmeta div{background:#f2f6f9;border:1px solid #e1e8ee;border-radius:8px;padding:10px}
+.pmeta b{display:block;font-size:10px;color:#657586;margin-bottom:4px;text-transform:uppercase}
+.pmeta span{font-size:13px;font-weight:700}
+.block{margin:12px 0;padding:11px;background:#f4f7fa;border-radius:8px;white-space:pre-wrap;font-size:13px;line-height:1.5}
+.pictures{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.pictures img{width:100%;height:190px;object-fit:contain;border:1px solid #dce4eb;border-radius:6px;background:#f7f8fa}
+.share-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+@media(max-width:520px){.row{grid-template-columns:1fr}.panel{padding:14px}.pmeta{grid-template-columns:1fr}.pictures img{height:145px}}
+@media print{.no-print,header,main>section:first-child{display:none!important}body{background:white}#preview{display:block!important;border:0}}
+</style>
+</head>
+<body>
+<header><div class="brand">ZENGİN İZOLASYON</div><p>Günlük Şantiye İmalat ve Saha Raporu</p></header>
+<main>
+<section class="panel no-print">
+<h2>Günlük rapor oluştur</h2>
+<div id="status">Rapor hazırlanıyor...</div>
+<div class="row">
+ <div><label for="site">Şantiye / Proje adı *</label><input id="site" placeholder="Örn. Yeni Konak Projesi"></div>
+ <div><label for="date">Rapor tarihi *</label><input id="date" type="date"></div>
+</div>
+<label for="supervisor">Şantiye şefi</label><input id="supervisor" placeholder="Ad Soyad">
+<label>İmalat fotoğrafları *</label>
+<p class="hint">En az 2 fotoğraf ekleyin. İstediğiniz kadar fotoğraf ekleyebilirsiniz.</p>
+<div class="photos" id="photos"></div>
+<button type="button" class="secondary" id="addPhoto">＋ Fotoğraf ekle</button>
+<div class="row">
+ <div><label for="workers">Personel / çalışma bilgisi *</label><textarea id="workers" placeholder="Örn. 2 kişi 1 gün çalışmış ve 2 saat mesai yapmıştır."></textarea></div>
+ <div><label for="materials">Kullanılan malzemeler *</label><textarea id="materials" placeholder="Örn. Ravago Bondstoper 5 mm – 45 rulo"></textarea></div>
+</div>
+<button class="primary" id="makePdf" style="margin-top:14px">PDF OLUŞTUR VE PAYLAŞ</button>
+<small class="note">Bu uygulama raporları cihazda saklamaz. Her rapor PDF olarak oluşturulur; WhatsApp veya e-posta ile gönderilir. PDF oluşturmak için internet bağlantısı gerekir.</small>
+</section>
+<section id="preview"></section>
+<div class="share-actions no-print" id="shareActions" style="display:none">
+ <button class="primary" id="sharePdf">WhatsApp / Paylaş</button>
+ <button class="secondary" id="downloadPdf" style="margin:0">PDF indir</button>
+</div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const dateNow=new Date();$('date').value=new Date(dateNow.getTime()-dateNow.getTimezoneOffset()*60000).toISOString().slice(0,10);
+let photoData=[],pdfBlob=null,pdfName='zengin-izolasyon-gunluk-rapor.pdf';
+function addPhoto(){
+ const n=photoData.length,wrap=document.createElement('div');wrap.className='photo';
+ const input=document.createElement('input');input.type='file';input.accept='image/*';input.id='img'+n;
+ const label=document.createElement('label');label.htmlFor=input.id;label.innerHTML='<strong style="font-size:25px">＋</strong><span>Fotoğraf '+(n+1)+'</span>';
+ input.addEventListener('change',e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  if(!file.type.startsWith('image/')){alert('Lütfen fotoğraf dosyası seçin.');return}
+  const reader=new FileReader();
+  reader.onload=()=>{photoData[n]=reader.result;label.innerHTML='';const im=document.createElement('img');im.src=reader.result;label.appendChild(im);};
+  reader.onerror=()=>alert('Fotoğraf okunamadı. Başka bir fotoğraf deneyin.');
+  reader.readAsDataURL(file);
+ });
+ const del=document.createElement('button');del.type='button';del.className='remove';del.textContent='Kaldır';del.onclick=()=>{photoData[n]=null;wrap.remove()};
+ wrap.append(input,label,del);$('photos').appendChild(wrap);
+}
+$('addPhoto').onclick=addPhoto;addPhoto();addPhoto();
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function showStatus(msg,good=false){$('status').style.display='block';$('status').style.background=good?'#eaf6ee':'#fff2e8';$('status').style.color=good?'#245b35':'#81451b';$('status').textContent=msg}
+function buildPreview(data){
+ const photos=data.photos.map((p,i)=>`<img src="${p}" alt="İmalat fotoğrafı ${i+1}">`).join('');
+ $('preview').innerHTML=`<h1>ZENGİN İZOLASYON</h1><div class="sub">GÜNLÜK ŞANTİYE İMALAT VE SAHA RAPORU</div>
+ <h2 style="font-size:18px;color:#173653;margin:0">${esc(data.site)}</h2>
+ <div class="pmeta"><div><b>Rapor tarihi</b><span>${esc(data.date)}</span></div><div><b>Şantiye şefi</b><span>${esc(data.supervisor||'Belirtilmedi')}</span></div></div>
+ <div class="block"><b>PERSONEL / ÇALIŞMA BİLGİSİ</b><br>${esc(data.workers)}</div>
+ <div class="block"><b>KULLANILAN MALZEMELER</b><br>${esc(data.materials)}</div>
+ <h3 style="font-size:14px;color:#173653;margin:14px 0 6px">İMALAT FOTOĞRAFLARI (${data.photos.length})</h3>
+ <div class="pictures">${photos}</div>`;
+ $('preview').style.display='block';$('shareActions').style.display='grid';
+}
+$('makePdf').onclick=async()=>{
+ const site=$('site').value.trim(),date=$('date').value,workers=$('workers').value.trim(),materials=$('materials').value.trim(),photos=photoData.filter(Boolean);
+ if(!site||!date||!workers||!materials){showStatus('Lütfen şantiye, tarih, personel ve malzeme alanlarını doldurun.');return}
+ if(photos.length<2){showStatus('PDF oluşturmak için en az 2 fotoğraf ekleyin.');return}
+ if(typeof html2pdf==='undefined'){showStatus('PDF kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');return}
+ const btn=$('makePdf');btn.disabled=true;btn.textContent='PDF HAZIRLANIYOR...';
+ try{
+  const data={site,date,supervisor:$('supervisor').value.trim(),workers,materials,photos};
+  buildPreview(data);
+  await Promise.all([...$('preview').querySelectorAll('img')].map(im=>im.decode().catch(()=>{})));
+  pdfName='zengin-izolasyon-'+site.toLocaleLowerCase('tr').replace(/[^a-z0-9]+/g,'-')+'-'+date+'.pdf';
+  const opt={margin:[10,10,10,10],filename:pdfName,image:{type:'jpeg',quality:.88},html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}};
+  pdfBlob=await html2pdf().set(opt).from($('preview')).outputPdf('blob');
+  showStatus('PDF hazır. Şimdi WhatsApp / Paylaş düğmesine dokunarak gönderebilirsiniz.',true);
+  $('shareActions').scrollIntoView({behavior:'smooth',block:'center'});
+ }catch(err){console.error(err);showStatus('PDF oluşturulamadı: '+(err.message||'Bilinmeyen hata'))}
+ finally{btn.disabled=false;btn.textContent='PDF OLUŞTUR VE PAYLAŞ'}
+};
+$('sharePdf').onclick=async()=>{
+ if(!pdfBlob){showStatus('Önce PDF oluşturun.');return}
+ const file=new File([pdfBlob],pdfName,{type:'application/pdf'});
+ try{
+  if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
+   await navigator.share({files:[file],title:'Günlük Şantiye Raporu',text:'Zengin İzolasyon günlük şantiye raporu'});
+  }else{
+   const url=URL.createObjectURL(pdfBlob);const a=document.createElement('a');a.href=url;a.download=pdfName;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+   showStatus('Bu tarayıcı PDF dosyasını doğrudan paylaşamıyor. PDF indirildi; WhatsApp sohbetine ek dosya olarak ekleyebilirsiniz.',true);
+  }
+ }catch(err){if(err.name!=='AbortError'){console.error(err);showStatus('Paylaşım açılamadı. PDF indir düğmesini kullanıp WhatsApp üzerinden ekleyebilirsiniz.')}}
+};
+$('downloadPdf').onclick=()=>{
+ if(!pdfBlob){showStatus('Önce PDF oluşturun.');return}
+ const url=URL.createObjectURL(pdfBlob),a=document.createElement('a');a.href=url;a.download=pdfName;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+};
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) { window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {})); }
+</script>
+</body></html>
