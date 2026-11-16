@@ -343,4 +343,16 @@ $('downloadPdf').onclick=()=>{
 };
 </script>
 
+
+<script>
+/* Uygulama güncellemelerini kontrol eder; önbellek hataları kullanıcı arayüzüne yazılmaz. */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+      .then(registration => registration.update())
+      .catch(error => console.info('Uygulama çevrimdışı önbelleği kullanılamadı; çevrimiçi kullanım devam eder.', error));
+  });
+}
+</script>
+
 </body></html>
