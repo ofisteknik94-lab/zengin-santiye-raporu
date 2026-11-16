@@ -342,27 +342,5 @@ $('downloadPdf').onclick=()=>{
  const url=URL.createObjectURL(pdfBlob),a=document.createElement('a');a.href=url;a.download=pdfName;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
 };
 </script>
-<script>
-/* Eski sürümlerde kaydedilmiş servis çalışanlarını ve uygulama önbelleğini temizle.
-   Uygulama bundan sonra her açılışta doğrudan güncel dosyaları sunucudan alır. */
-(async function removeOldOfflineCache(){
-  try {
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const registration of registrations) {
-        const scope = registration.scope || "";
-        if (scope.includes("/zengin-santiye-raporu/")) {
-          await registration.unregister();
-        }
-      }
-    }
-    if ("caches" in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.filter(key => key.startsWith("zengin-rapor")).map(key => caches.delete(key)));
-    }
-  } catch (error) {
-    console.info("Önbellek temizliği tamamlanamadı; uygulama normal şekilde çalışmaya devam eder.", error);
-  }
-})();
-</script>
+
 </body></html>
